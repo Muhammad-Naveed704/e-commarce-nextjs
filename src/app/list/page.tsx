@@ -1,3 +1,4 @@
+
 import Filter from "@/components/Filter";
 import ProductList from "@/components/ProductList";
 import { wixClientServer } from "@/lib/wixClientServer";
@@ -34,7 +35,7 @@ const ListPage = async ({searchParams}:{searchParams:any}) => {
       <Suspense fallback={"loading..."}>
         <ProductList
           categoryId={
-            cat.collections?._id || "00000000-000000-000000-000000000001"
+            cat.collection?._id || "00000000-000000-000000-000000000001"
           }
           searchParams={searchParams}
         />
