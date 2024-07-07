@@ -4,8 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 import DOMPPurify from "isomorphic-dompurify";
+import Pagination from "./Pagination";
 
-const PRODUCT_PER_PAGE = 20;
+const PRODUCT_PER_PAGE = 3;
 
 const ProductList = async ({
   categoryId,
@@ -14,15 +15,30 @@ const ProductList = async ({
 }: {
   categoryId: string;
   limit?: number;
-  searchParams?:any;
+  searchParams?: any;
 }) => {
   const wixClient = await wixClientServer();
-  const res = await wixClient.products
+  const productQuery =  wixClient.products
     .queryProducts()
+    .startsWith("name", searchParams?.name || "")
     .eq("collectionIds", categoryId)
+    .hasSome("productType", [searchParams?.type || "physical", "digital"])
+    .gt("priceData.price", searchParams?.min || 0)
+    .lt("priceData.price", searchParams?.max || 999999)
     .limit(limit || PRODUCT_PER_PAGE)
-    .find();
-  console.log(res);
+    .skip(searchParams?.page ? parseInt(searchParams.page) * (limit || PRODUCT_PER_PAGE): 0)
+    
+    if(searchParams?.sort){
+      const [sortType, sortBy] = searchParams.sort.split(" ")
+      
+      if (sortType === "asc") {
+        productQuery.ascending(sortBy)
+      }
+      if (sortType === "desc") {
+        productQuery.descending(sortBy)
+      }
+    }
+    const res = await productQuery.find();
 
   return (
     <div className="mt-12 flex gap-x-8 gap-y-16 justify-between flex-wrap">
@@ -52,24 +68,27 @@ const ProductList = async ({
           </div>
           <div className="flex justify-between">
             <span className="font-medium"> {product.name}</span>
-            <span className="font-semibold">{product.price?.price} </span>
+            <span className="font-semibold"> ${product.price?.price} </span>
           </div>
           {product.additionalInfoSections && (
             <div
               className="text-sm text-gray-500"
-              dangerouslySetInnerHTML={{ __html: DOMPPurify.sanitize(product.additionalInfoSections?.find(
-                (section: any) => section.title === "shortDesc"
-              )?.description || "") }}
-             >
-              
-            </div>
-          )}
+              dangerouslySetInnerHTML={{
+                __html: DOMPPurify.sanitize(
+                  product.additionalInfoSections?.find(
+                    (section: any) => section.title === "shortDesc"
+                  )?.description || ""
+                ),
+              }}
+            ></div>
+  )}
           <button className="rounded-2xl ring-1 ring-naveed text-naveed py-2 px-4 w-max text-xs hover:bg-naveed hover:text-white">
             {" "}
             Add to cart
           </button>
         </Link>
-      ))}
+      ))} 
+      <Pagination currentPage={res.currentPage || 0} hasPrev={res.hasPrev()} hasNext={res.hasNext()}/>
     </div>
   );
 };
